@@ -1,41 +1,38 @@
-const url = require("url");
+const express = require("express");
 const axios = require("axios");
-const { version } = require("../package.json");
 
-const API_KEY = process.env.TMDB_API_KEY;
+const app = express();
+const API_KEY = "029dc254541d66ff207bd94192077f9a";
+const BASE_URL = "https://api.themoviedb.org/3"; // Gunakan URL yang benar
 
-module.exports = async (req, res) => {
+app.use(express.json());
+
+app.all("*", async (req, res) => {
     try {
-        // obtain url path and remove '/api/tmdb' base path
-        const path = url.parse(req.url).pathname.replace('/api/index', '');
+        let tmdbUrl = `${BASE_URL}${req.path}`;
+        let params = { ...req.query }; // Ambil semua parameter query
 
-        if(path.length === 0 || path === '/'){
-            res.send({
-                'version': version,
-                'documentation': 'https://developers.themoviedb.org/3/getting-started/introduction',
-            })
-            return;
-        }
+        // Pastikan API Key tetap ada
+        params.api_key = API_KEY;
 
-        const { data } = await axios({
-            method: req.method,
-            baseURL: 'https://api.themoviedb.org',
-            url: path,
-            params: {
-                api_key: API_KEY,
-                ...req.query
-            },
-            body: req.body
-        })
-        res.send(data)
-    } catch(e) {
-        const { response } = e;
-        if(response && 'status' in response){
-            res.status(response.status)
-            res.send(response.data)
-        }else{
-            res.status(500)
-            res.send('Something went wrong')
-        }
+        // 🛠 DEBUG: Log URL dan Query untuk cek apakah `page` ikut terkirim
+        console.log("Request ke TMDB:", tmdbUrl);
+        console.log("Query Params:", params);
+
+        // Fetch data dari TMDB dengan parameter yang benar
+        const response = await axios.get(tmdbUrl, { params });
+
+        // Set header agar tidak disimpan cache di browser
+        res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+
+        res.status(response.status).json(response.data);
+    } catch (error) {
+        console.error("Error:", error.message);
+        res.status(error.response?.status || 500).json({
+            error: "Gagal mengambil data dari TMDB",
+            details: error.message
+        });
     }
-}
+});
+
+module.exports = app;
