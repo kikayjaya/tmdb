@@ -7,20 +7,21 @@ const BASE_URL = "https://api.themoviedb.org";
 
 app.use(express.json());
 
-app.all("*", async (req, res) => {
+// Proxy TMDB API
+app.get("*", async (req, res) => {
     try {
-        let tmdbUrl = `${BASE_URL}${req.path}`;
-        let params = req.query;
+        const path = req.path;
+        const query = new URLSearchParams(req.query);
 
-        // Tambahkan API Key jika belum ada
-        if (!params.api_key) {
-            params.api_key = API_KEY;
+        if (!query.has("api_key")) {
+            query.append("api_key", API_KEY);
         }
 
-        // Fetch data menggunakan Axios (setara cURL di PHP)
-        const response = await axios.get(tmdbUrl, { params });
+        const tmdbUrl = `${BASE_URL}${path}?${query.toString()}`;
+        console.log(`Fetching: ${tmdbUrl}`);
 
-        res.status(response.status).json(response.data);
+        const response = await axios.get(tmdbUrl);
+        res.json(response.data);
     } catch (error) {
         res.status(error.response?.status || 500).json({
             error: "Gagal mengambil data dari TMDB",
