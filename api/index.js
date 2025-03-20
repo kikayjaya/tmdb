@@ -1,37 +1,41 @@
-const express = require("express");
+const url = require("url");
 const axios = require("axios");
+const { version } = require("../package.json");
 
-const app = express();
-const API_KEY = "029dc254541d66ff207bd94192077f9a";
-const BASE_URL = "https://api.themoviedb.org"; // Pastikan menggunakan "/3"
+const API_KEY = process.env.TMDB_API_KEY;
 
-app.use(express.json());
-
-app.all("*", async (req, res) => {
+module.exports = async (req, res) => {
     try {
-        let tmdbUrl = `${BASE_URL}${req.path}`;
-        let params = { ...req.query }; // Salin semua parameter dari query
+        // obtain url path and remove '/api/tmdb' base path
+        const path = url.parse(req.url).pathname.replace('/api/index', '');
 
-        // Tambahkan API Key jika belum ada
-        if (!params.api_key) {
-            params.api_key = API_KEY;
+        if(path.length === 0 || path === '/'){
+            res.send({
+                'version': version,
+                'documentation': 'https://developers.themoviedb.org/3/getting-started/introduction',
+            })
+            return;
         }
 
-        // 🛠 DEBUG: Log request ke TMDB
-        console.log("Fetching TMDB:", tmdbUrl, params);
-
-        // Fetch data dari TMDB
-        const response = await axios.get(tmdbUrl, { params });
-
-        res.status(response.status).json(response.data);
-    } catch (error) {
-        console.error("Error fetching TMDB:", error.message);
-
-        res.status(error.response?.status || 500).json({
-            error: "Gagal mengambil data dari TMDB",
-            details: error.message
-        });
+        const { data } = await axios({
+            method: req.method,
+            baseURL: 'https://api.themoviedb.org',
+            url: path,
+            params: {
+                api_key: API_KEY,
+                ...req.query
+            },
+            body: req.body
+        })
+        res.send(data)
+    } catch(e) {
+        const { response } = e;
+        if(response && 'status' in response){
+            res.status(response.status)
+            res.send(response.data)
+        }else{
+            res.status(500)
+            res.send('Something went wrong')
+        }
     }
-});
-
-module.exports = app;
+}
