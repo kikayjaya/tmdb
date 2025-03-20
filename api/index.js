@@ -3,7 +3,7 @@ const axios = require("axios");
 
 const app = express();
 const API_KEY = "029dc254541d66ff207bd94192077f9a";
-const BASE_URL = "https://api.themoviedb.org/3"; // Gunakan URL yang benar
+const BASE_URL = "https://api.themoviedb.org"; // Gunakan URL yang benar
 
 app.use(express.json());
 
